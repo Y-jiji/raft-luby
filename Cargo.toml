@@ -1,0 +1,9 @@
+[package]
+name = "coded-raft"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+auto_impl = "1.2.0"
+rand = "0.8.5"
+serde = "1.0.216"
