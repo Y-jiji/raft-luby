@@ -15,6 +15,7 @@ pub struct RaftLubyImpl<Proposal> where
     pub(crate) term: Term,
     pub(crate) vote: Option<RaftId>,
     // volatile states
+    // pub(crate) buff: 
     pub(crate) role: LubyRole,
     pub(crate) commitable: usize,
     pub(crate) timeout_elect: u64,

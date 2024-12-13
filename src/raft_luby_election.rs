@@ -1,19 +1,22 @@
 use crate::*;
 use serde::{Serialize, Deserialize};
-use std::{collections::HashMap, fmt::Debug};
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::ops::BitXor;
 
 // Leader election in a term: 
 // - To get elected, the candidate's term must be 'up-to-date' to a majority of servers.
 // - To get elected, the candidate must have a more 'up-to-date' log than a majority of servers. 
 impl<Proposal> RaftLubyImpl<Proposal> where
-    Proposal: Serialize + for<'de> Deserialize<'de> + Debug
+    Proposal: Serialize + for<'de> Deserialize<'de> + Clone + Debug,
+    Proposal: BitXor<Proposal, Output = Proposal>
 {
     // become a candidate and request vote from all peers
     // - the server is not currently a leader
     // - start a new term and vote for itself
     // - reset election timeout
     // - send request
-    pub fn coup_détat(&mut self, adaptor: &impl Adaptor<RaftMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) {
+    pub fn coup_détat(&mut self, adaptor: &impl Adaptor<RaftLubyMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) {
         // normally the leader will not start a coup d'état
         // (unless you are the president of south korea in 2025)
         if matches!(self.role, LubyRole::Leader { .. }) { return }
@@ -28,7 +31,7 @@ impl<Proposal> RaftLubyImpl<Proposal> where
         // ask for vote from all other servers
         for id in self.peers.iter().copied() {
             if id == self.id { continue }
-            adaptor.send(id, RaftMsg::VoteReq { last: disk.last(), candidate: (self.term, self.id)});
+            adaptor.send(id, RaftLubyMsg::VoteReq { last: disk.last(), candidate: (self.term, self.id)});
         }
     }
     // handle vote request
@@ -43,7 +46,7 @@ impl<Proposal> RaftLubyImpl<Proposal> where
     pub fn handle_vote_req(&mut self, 
         (cand_term, cand_id): (Term, RaftId),
         (last_term, last_index): (Term, usize),
-        adaptor: &impl Adaptor<RaftMsg<Proposal>>, disk: &mut impl Persistor<Proposal>
+        adaptor: &impl Adaptor<RaftLubyMsg<Proposal>>, disk: &mut impl Persistor<Proposal>
     ) {
         let reject = self.term > cand_term && {println!("RAFT :: reject vote because current term is larger"); true};
         let reject = reject || (
@@ -53,10 +56,10 @@ impl<Proposal> RaftLubyImpl<Proposal> where
             disk.last() > (last_term, last_index)
             && {println!("RAFT :: reject vote, log not up-to-date"); true});
         let msg = if reject {
-            RaftMsg::VoteRej { term: self.term }
+            RaftLubyMsg::VoteRej { term: self.term }
         } else {
             self.vote = Some(cand_id);
-            RaftMsg::VoteAck { term: cand_term }
+            RaftLubyMsg::VoteAck { term: cand_term }
         };
         disk.persist(self.term, self.vote);
         println!("RAFT :: vote {:?} -> {cand_id:?} :: {msg:?}", self.id);

@@ -14,7 +14,7 @@ impl<Proposal> RaftPaperImpl<Proposal> where
     Proposal: Serialize + for<'de> Deserialize<'de> + Clone
 {
     // try replicate based on current knowledge
-    pub(crate) fn replicate(&mut self, adaptor: &impl Adaptor<RaftMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) {
+    pub(crate) fn replicate(&mut self, adaptor: &impl Adaptor<RaftPaperMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) {
         let PaperRole::Leader { guessed, .. } = &self.role else { return };
         self.timeout_heart = 0;
         println!("RAFT :: {:?} replicate", self.id);
@@ -22,7 +22,7 @@ impl<Proposal> RaftPaperImpl<Proposal> where
             if id == self.id { continue }
             let last_index = guessed[&id].min(disk.last().1);
             let last_term = last_index.checked_add_signed(-1).map(|x| disk.term(x).unwrap_or(Term(0)));
-            adaptor.send(id, RaftMsg::ReplicateReq {
+            adaptor.send(id, RaftPaperMsg::ReplicateReq {
                 patch: disk.slice(last_index..last_index+self.batch), 
                 leader: (self.term, self.id), 
                 commit: self.commitable,
@@ -36,11 +36,11 @@ impl<Proposal> RaftPaperImpl<Proposal> where
         (prefix_term, prefix_index): (Option<Term>, usize),
         patch: Vec<(Proposal, ProposalId, Term)>,
         commit: usize,
-        adaptor: &impl Adaptor<RaftMsg<Proposal>>,
+        adaptor: &impl Adaptor<RaftPaperMsg<Proposal>>,
         disk: &mut impl Persistor<Proposal>
     ) {
         // if term is outdated or log doesn't match, reply append failed
-        let reject = RaftMsg::ReplicateRej {
+        let reject = RaftPaperMsg::ReplicateRej {
             from: self.id, 
             term: self.term,
             at: prefix_index
@@ -71,7 +71,7 @@ impl<Proposal> RaftPaperImpl<Proposal> where
             self.commitable = commit.min(disk.last().1);
             disk.commit(commit.min(disk.last().1));
         }
-        adaptor.send(leader_id, RaftMsg::ReplicateAck { from: self.id, tail: disk.last().1, sync });
+        adaptor.send(leader_id, RaftPaperMsg::ReplicateAck { from: self.id, tail: disk.last().1, sync });
     }
     // handle follower/candidate acknowledge
     pub(crate) fn handle_replicate_ack(&mut self,

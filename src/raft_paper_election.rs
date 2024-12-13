@@ -13,7 +13,7 @@ impl<Proposal> RaftPaperImpl<Proposal> where
     // - start a new term and vote for itself
     // - reset election timeout
     // - send request
-    pub fn coup_détat(&mut self, adaptor: &impl Adaptor<RaftMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) {
+    pub fn coup_détat(&mut self, adaptor: &impl Adaptor<RaftPaperMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) {
         // normally the leader will not start a coup d'état
         // (unless you are the president of south korea in 2025)
         if matches!(self.role, PaperRole::Leader { .. }) { return }
@@ -28,7 +28,7 @@ impl<Proposal> RaftPaperImpl<Proposal> where
         // ask for vote from all other servers
         for id in self.peers.iter().copied() {
             if id == self.id { continue }
-            adaptor.send(id, RaftMsg::VoteReq { last: disk.last(), candidate: (self.term, self.id)});
+            adaptor.send(id, RaftPaperMsg::VoteReq { last: disk.last(), candidate: (self.term, self.id)});
         }
     }
     // handle vote request
@@ -43,7 +43,7 @@ impl<Proposal> RaftPaperImpl<Proposal> where
     pub fn handle_vote_req(&mut self, 
         (cand_term, cand_id): (Term, RaftId),
         (last_term, last_index): (Term, usize),
-        adaptor: &impl Adaptor<RaftMsg<Proposal>>, disk: &mut impl Persistor<Proposal>
+        adaptor: &impl Adaptor<RaftPaperMsg<Proposal>>, disk: &mut impl Persistor<Proposal>
     ) {
         let reject = self.term > cand_term && {println!("RAFT :: reject vote because current term is larger"); true};
         let reject = reject || (
@@ -53,10 +53,10 @@ impl<Proposal> RaftPaperImpl<Proposal> where
             disk.last() > (last_term, last_index)
             && {println!("RAFT :: reject vote, log not up-to-date"); true});
         let msg = if reject {
-            RaftMsg::VoteRej { term: self.term }
+            RaftPaperMsg::VoteRej { term: self.term }
         } else {
             self.vote = Some(cand_id);
-            RaftMsg::VoteAck { term: cand_term }
+            RaftPaperMsg::VoteAck { term: cand_term }
         };
         disk.persist(self.term, self.vote);
         println!("RAFT :: vote {:?} -> {cand_id:?} :: {msg:?}", self.id);

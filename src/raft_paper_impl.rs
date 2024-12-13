@@ -52,32 +52,32 @@ impl<Proposal> RaftPaperImpl<Proposal> where
             bound_heart, timeout_heart: 0
         }
     }
-    pub fn handle(&mut self, adaptor: &impl Adaptor<RaftMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) -> bool {
+    pub fn handle(&mut self, adaptor: &impl Adaptor<RaftPaperMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) -> bool {
         let Some(msg) = adaptor.receive() else { return false };
         match msg {
-            RaftMsg::ProposalReq { proposal, id } 
+            RaftPaperMsg::ProposalReq { proposal, id } 
                 => {let _ = self.propose(proposal, id, adaptor, disk);},
-            RaftMsg::ReplicateReq { leader, prefix, patch, commit } 
+            RaftPaperMsg::ReplicateReq { leader, prefix, patch, commit } 
                 => self.handle_replicate(leader, prefix, patch, commit, adaptor, disk),
-            RaftMsg::ReplicateAck { from, sync, tail }
+            RaftPaperMsg::ReplicateAck { from, sync, tail }
                 => self.handle_replicate_ack(from, sync, tail, disk),
-            RaftMsg::ReplicateRej { from, term, at }
+            RaftPaperMsg::ReplicateRej { from, term, at }
                 => self.handle_replicate_rej(from, term, at, disk),
-            RaftMsg::VoteReq { candidate, last }
+            RaftPaperMsg::VoteReq { candidate, last }
                 => self.handle_vote_req(candidate, last, adaptor, disk),
-            RaftMsg::VoteAck { term }
+            RaftPaperMsg::VoteAck { term }
                 => self.handle_vote_ack(term, disk),
-            RaftMsg::VoteRej { term }
+            RaftPaperMsg::VoteRej { term }
                 => self.handle_vote_rej(term, disk),
         } true
     }
     // submit a proposal to a server
     // - the proposal id must be distinct, even if it is a resubmission
-    pub fn propose(&mut self, proposal: Proposal, id: ProposalId, adaptor: &impl Adaptor<RaftMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) -> Result<(), RaftErr> {
+    pub fn propose(&mut self, proposal: Proposal, id: ProposalId, adaptor: &impl Adaptor<RaftPaperMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) -> Result<(), RaftErr> {
         match self.role {
             // a follower cannot handle request itself, but can redirect it to leader
             PaperRole::Follower { leader } => {
-                adaptor.send(leader, RaftMsg::ProposalReq { proposal, id });
+                adaptor.send(leader, RaftPaperMsg::ProposalReq { proposal, id });
                 Ok(())
             }
             // a candidate cannot effectively handle this
@@ -93,7 +93,7 @@ impl<Proposal> RaftPaperImpl<Proposal> where
         }
     }
     // tick timeout, do what is needed
-    pub fn tick(&mut self, adaptor: &impl Adaptor<RaftMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) {
+    pub fn tick(&mut self, adaptor: &impl Adaptor<RaftPaperMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) {
         self.timeout_elect += 1;
         self.timeout_heart += 1;
         if self.timeout_elect >= self.bound_elect {
@@ -113,7 +113,7 @@ mod test {
     #[test]
     fn mock_fifo() {
         type P = usize;
-        type M = RaftMsg<P>;
+        type M = RaftPaperMsg<P>;
         let peers = (0..5).map(|i| RaftId(i)).collect::<Vec<_>>();
         let network = Arc::new(Mutex::new(MockFIFONetwork::<M>::new(5)));
         let mut adaptors = (0..5).map(|i| MockAdaptor::<M, _>::new(RaftId(i), network.clone())).collect::<Vec<_>>();
@@ -136,7 +136,7 @@ mod test {
     #[test]
     fn mock_burst() {
         type P = usize;
-        type M = RaftMsg<P>;
+        type M = RaftPaperMsg<P>;
         let peers = (0..5).map(|i| RaftId(i)).collect::<Vec<_>>();
         let network = Arc::new(Mutex::new(MockBrustNetwork::<M>::new(5, 0.9, 0.01, 0.5, 0.1, 1)));
         let mut adaptors = (0..5).map(|i| MockAdaptor::<M, _>::new(RaftId(i), network.clone())).collect::<Vec<_>>();

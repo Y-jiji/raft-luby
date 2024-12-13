@@ -1,7 +1,11 @@
+use std::ops::BitXor;
+
 use crate::raft_nums::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum RaftPaperMsg<Proposal> {
+pub enum RaftLubyMsg<Proposal> where
+    Proposal: BitXor<Proposal, Output = Proposal>
+{
     // Proposal request
     ProposalReq { proposal: Proposal, id: ProposalId },
     // Replicate a segment of log items
@@ -33,4 +37,12 @@ pub enum RaftErr {
     // 1. The proposer doesn't know who is the leader of current term. 
     // 2. A log entry that contains the proposal is overwritten. 
     ProposalFailed { id: ProposalId },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Codeword<Proposal> where
+    Proposal: BitXor<Proposal, Output = Proposal>
+{
+    data: Proposal,
+    symb: Vec<usize>
 }
