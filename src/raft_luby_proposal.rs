@@ -1,5 +1,5 @@
 use crate::*;
-use std::ops::BitXor;
+use std::{fmt::Debug, ops::BitXor};
 use serde::{Serialize, Deserialize};
 
 // Lifecycle of a proposal: 
@@ -12,25 +12,39 @@ use serde::{Serialize, Deserialize};
 // - When the item is committed, reply to the client. 
 // - When the item is discarded, reply to the client. 
 impl<Proposal> RaftLubyImpl<Proposal> where
-    Proposal: Serialize + for<'de> Deserialize<'de> + Clone,
+    Proposal: Serialize + for<'de> Deserialize<'de> + Clone + Debug,
     Proposal: BitXor<Proposal, Output = Proposal>
 {
     // try replicate based on current knowledge
     pub(crate) fn replicate(&mut self, adaptor: &impl Adaptor<RaftLubyMsg<Proposal>>, disk: &mut impl Persistor<Proposal>) {
-        let LubyRole::Leader { guessed, .. } = &self.role else { return };
+        let LubyRole::Leader { .. } = &self.role else { return };
         self.timeout_heart = 0;
         println!("RAFT :: {:?} replicate", self.id);
         for id in self.peers.iter().copied() {
             if id == self.id { continue }
-            let last_index = guessed[&id].min(disk.last().1);
-            let last_term = last_index.checked_add_signed(-1).map(|x| disk.term(x).unwrap_or(Term(0)));
+            // let last_index = guessed[&id].min(disk.last().1);
+            // let last_term = last_index.checked_add_signed(-1).map(|x| disk.term(x).unwrap_or(Term(0)));
             adaptor.send(id, RaftLubyMsg::ReplicateReq {
-                patch: disk.slice(last_index..last_index+self.batch), 
+                patch: (0..self.batch).map(|_| self.encode(disk)).collect::<Vec<_>>(), 
                 leader: (self.term, self.id), 
                 commit: self.commitable,
-                prefix: (last_term, last_index)
+                prefix: todo!()
             });
         }
+    }
+    // encode a codeword from disk
+    pub(crate) fn encode(&mut self, disk: &mut impl Persistor<Proposal>) -> Codeword<Proposal> {
+        // random number
+        let r = rand::random::<f32>();
+        let mut s = 0f32;
+        // select degree
+        let d = 1 + self.degdist.iter().map(|x| {s += *x; s}).enumerate().find(|(i, x)| *x < r).unwrap().0;
+        // sample elements
+        disk.slice(self.commitable..disk.last().1);
+        // 
+        todo!()
+        // // how to sample
+        // Codeword::sample(data, d)
     }
     // validate and append delta
     pub(crate) fn handle_replicate(&mut self,
@@ -82,8 +96,7 @@ impl<Proposal> RaftLubyImpl<Proposal> where
         tail: usize,
         disk: &mut impl Persistor<Proposal>
     ) {
-        let LubyRole::Leader { matched, guessed } = &mut self.role else { return };
-        *guessed.get_mut(&from).expect("every peer should be logged") = sync;
+        let LubyRole::Leader { matched } = &mut self.role else { return };
         *matched.get_mut(&from).expect("every peer should be logged") = sync;
         let mut matches = matched.values().copied().collect::<Vec<_>>();
         matches.sort();
@@ -96,9 +109,10 @@ impl<Proposal> RaftLubyImpl<Proposal> where
         term: Term,
         at: usize, disk: &mut impl Persistor<Proposal>
     ) {
-        let LubyRole::Leader { guessed, .. } = &mut self.role else { return };
+        let LubyRole::Leader { .. } = &mut self.role else { return };
         if term <= self.term {
-            *guessed.get_mut(&from).expect("every peer should be logged") = at / 2;
+            todo!()
+            // *guessed.get_mut(&from).expect("every peer should be logged") = at / 2;
         } else {
             self.role = LubyRole::Candidate { count: 0 };
             self.term = term;

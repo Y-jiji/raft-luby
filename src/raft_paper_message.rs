@@ -26,11 +26,3 @@ pub enum RaftPaperMsg<Proposal> {
     // Vote rejected
     VoteRej { term: Term },
 }
-
-#[derive(Debug)]
-pub enum RaftErr {
-    // Proposal Failed: 
-    // 1. The proposer doesn't know who is the leader of current term. 
-    // 2. A log entry that contains the proposal is overwritten. 
-    ProposalFailed { id: ProposalId },
-}

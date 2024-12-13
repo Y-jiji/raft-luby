@@ -85,7 +85,6 @@ impl<Proposal> RaftLubyImpl<Proposal> where
             // update role if enough vote is collected
             LubyRole::Leader {
                 matched: HashMap::from_iter(self.peers.iter().map(|x| (*x, 0))),
-                guessed: HashMap::from_iter(self.peers.iter().map(|x| (*x, disk.last().1)))
             }
         }
     }

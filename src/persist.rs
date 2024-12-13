@@ -51,7 +51,7 @@ impl<Proposal: Clone> Persistor<Proposal> for MockPersistor<Proposal> {
         self.log.push((proposal, id, term));
     }
     fn last(&self) -> (Term, usize) {
-        self.log.last().map(|(_, _, term)| (*term, self.log.len()-1)).unwrap_or((Term(0), 0))
+        self.log.last().map(|(_, _, term)| (*term, self.log.len())).unwrap_or((Term(0), 0))
     }
     fn term(&self, at: usize) -> Option<Term> {
         self.log.get(at).map(|(_, _, term)| *term)

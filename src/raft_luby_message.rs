@@ -14,7 +14,7 @@ pub enum RaftLubyMsg<Proposal> where
         commit: usize,
         leader: (Term, RaftId),
         prefix: (Option<Term>, usize),
-        patch: Vec<(Proposal, ProposalId, Term)>,
+        patch: Vec<Codeword<Proposal>>,
     },
     // Acknowledge replication
     ReplicateAck { from: RaftId, sync: usize, tail: usize },
@@ -28,15 +28,7 @@ pub enum RaftLubyMsg<Proposal> where
     // Vote acknowledged
     VoteAck { term: Term },
     // Vote rejected
-    VoteRej { term: Term },
-}
-
-#[derive(Debug)]
-pub enum RaftErr {
-    // Proposal Failed: 
-    // 1. The proposer doesn't know who is the leader of current term. 
-    // 2. A log entry that contains the proposal is overwritten. 
-    ProposalFailed { id: ProposalId },
+    VoteRej { term: Term }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -44,5 +36,5 @@ pub struct Codeword<Proposal> where
     Proposal: BitXor<Proposal, Output = Proposal>
 {
     data: Proposal,
-    symb: Vec<usize>
+    symb: Vec<ProposalId>
 }
