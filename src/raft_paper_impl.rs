@@ -112,6 +112,7 @@ mod test {
 
     #[test]
     fn mock_fifo() {
+        // commit: 10000/10000
         type P = usize;
         type M = RaftPaperMsg<P>;
         let peers = (0..5).map(|i| RaftId(i)).collect::<Vec<_>>();
@@ -135,10 +136,11 @@ mod test {
 
     #[test]
     fn mock_burst() {
+        // commit: 4387/10000
         type P = usize;
         type M = RaftPaperMsg<P>;
         let peers = (0..5).map(|i| RaftId(i)).collect::<Vec<_>>();
-        let network = Arc::new(Mutex::new(MockBrustNetwork::<M>::new(5, 0.9, 0.01, 0.5, 0.1, 1)));
+        let network = Arc::new(Mutex::new(MockBurstNetwork::<M>::new(5, 0.9, 0.01, 0.5, 0.1, 1)));
         let mut adaptors = (0..5).map(|i| MockAdaptor::<M, _>::new(RaftId(i), network.clone())).collect::<Vec<_>>();
         let mut disks = vec![MockPersistor::<P>::new(); 5];
         let mut nodes = (0..5).map(|i| 

@@ -37,7 +37,7 @@ pub trait MockNetwork<Msg> {
 }
 
 // Network Environment with Burst Connection
-pub struct MockBrustNetwork<Msg> {
+pub struct MockBurstNetwork<Msg> {
     // channel state
     state: HashMap<(RaftId, RaftId), bool>,
     // message queue for each server
@@ -54,7 +54,7 @@ pub struct MockBrustNetwork<Msg> {
     timedelta_probability: f32
 }
 
-impl<Msg: Ord> MockBrustNetwork<Msg> {
+impl<Msg: Ord> MockBurstNetwork<Msg> {
     pub fn new(
         peers: usize,
         rate_upper: f32, 
@@ -83,7 +83,7 @@ impl<Msg: Ord> MockBrustNetwork<Msg> {
 }
 
 // Simulator of Network Environment
-impl<Msg: Ord + Debug> MockNetwork<Msg> for Arc<Mutex<MockBrustNetwork<Msg>>> {
+impl<Msg: Ord + Debug> MockNetwork<Msg> for Arc<Mutex<MockBurstNetwork<Msg>>> {
     fn receive(&self, receiver: RaftId) -> Option<Msg> {
         let mut lock = self.lock().unwrap();
         // if rand::random::<f32>() <= lock.timedelta_probability { lock.timestamp += 1; }

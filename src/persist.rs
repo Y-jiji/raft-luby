@@ -1,5 +1,3 @@
-use std::path;
-
 use crate::*;
 
 pub trait Persistor<Proposal> {
